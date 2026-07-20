@@ -178,6 +178,17 @@ select#exercise{
   display:none; align-items:flex-end; justify-content:center; z-index:50;
 }
 #overlay.show{ display:flex; }
+#addExOverlay{
+  position:fixed; inset:0; background:rgba(6,7,10,0.75); backdrop-filter:blur(6px);
+  display:none; align-items:flex-end; justify-content:center; z-index:50;
+}
+#addExOverlay.show{ display:flex; }
+#addExSheet{
+  width:100%; max-width:480px; background:var(--panel); border-radius:24px 24px 0 0;
+  padding:20px 20px calc(20px + env(safe-area-inset-bottom)); border-top:1px solid var(--line);
+}
+#addExSheet #newExName{ width:100%; }
+#addExSheet #confirmAddEx{ width:100%; margin-top:12px; }
 #keypadSheet{
   width:100%; max-width:480px; background:var(--panel); border-radius:24px 24px 0 0;
   padding:20px; border-top:1px solid var(--line);
@@ -213,14 +224,6 @@ select#exercise{
       <div class="exRow">
         <select id="exercise"></select>
         <button id="addExBtn">+</button>
-      </div>
-      <div id="addExRow">
-        <input id="newExName" placeholder="New exercise name" />
-        <div class="typeToggle">
-          <button class="typeBtn active" data-type="strength">Strength</button>
-          <button class="typeBtn" data-type="cardio">Cardio</button>
-        </div>
-        <button id="confirmAddEx">Add exercise</button>
       </div>
       <div class="lastHint" id="lastHint"></div>
     </div>
@@ -289,6 +292,18 @@ select#exercise{
     <button id="exportBtn">Download Data</button>
 
   </main>
+</div>
+
+<div id="addExOverlay">
+  <div id="addExSheet">
+    <div class="label" style="margin-bottom:12px;">New Exercise</div>
+    <input id="newExName" placeholder="Exercise name" />
+    <div class="typeToggle" style="margin-top:12px;">
+      <button class="typeBtn active" data-type="strength">Strength</button>
+      <button class="typeBtn" data-type="cardio">Cardio</button>
+    </div>
+    <button id="confirmAddEx">Add exercise</button>
+  </div>
 </div>
 
 <div id="overlay">
@@ -434,8 +449,12 @@ select#exercise{
   document.getElementById('speedPlus').onclick = ()=>{ if(speed<10) speedWheel.scrollTo(speed+1, true); };
 
   document.getElementById('addExBtn').onclick = ()=>{
-    document.getElementById('addExRow').classList.toggle('show');
+    document.getElementById('addExOverlay').classList.add('show');
+    setTimeout(()=> document.getElementById('newExName').focus(), 50);
   };
+  document.getElementById('addExOverlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'addExOverlay') e.target.classList.remove('show');
+  });
   document.querySelectorAll('.typeBtn').forEach(btn=>{
     btn.onclick = ()=>{
       document.querySelectorAll('.typeBtn').forEach(b=>b.classList.remove('active'));
@@ -451,7 +470,7 @@ select#exercise{
     renderExOptions();
     exSelect.value = name;
     document.getElementById('newExName').value = '';
-    document.getElementById('addExRow').classList.remove('show');
+    document.getElementById('addExOverlay').classList.remove('show');
     newExType = 'strength';
     document.querySelectorAll('.typeBtn').forEach(b=>b.classList.remove('active'));
     document.querySelector('.typeBtn[data-type="strength"]').classList.add('active');
