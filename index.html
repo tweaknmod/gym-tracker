@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Session Log">
+<meta name="apple-mobile-web-app-title" content="Gym Log">
 <meta name="theme-color" content="#0b0d12">
-<title>Session Log</title>
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>Gym Log</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&display=swap');
 
@@ -26,14 +28,18 @@
 }
 
 *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body{ height:100%; margin:0; overscroll-behavior:none; }
+html,body{ height:100%; margin:0; overscroll-behavior:none; background: var(--bg); }
 body{
   background: radial-gradient(120% 140% at 20% -10%, #191d29 0%, var(--bg) 55%);
   color: var(--text);
   font-family:'Inter', -apple-system, sans-serif;
   display:flex; justify-content:center;
+  min-height:100vh;
+  min-height:100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
-#app{ width:100%; max-width:480px; min-height:100vh; display:flex; flex-direction:column; }
+#app{ width:100%; max-width:480px; min-height:100%; display:flex; flex-direction:column; }
 .disp{ font-family:'Inter Tight', sans-serif; letter-spacing:0.01em; }
 
 header{
@@ -160,6 +166,13 @@ select#exercise{
 .mgBtn:disabled{ opacity:0.3; }
 .mgBtn.del{ color:var(--danger); }
 
+#exportBtn{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--violet-2);
+  border-radius:100px; padding:15px; font-family:'Inter Tight',sans-serif;
+  font-size:14px; font-weight:700; letter-spacing:0.02em; margin-top:2px;
+}
+#exportBtn:active{ transform:scale(0.98); }
+
 #overlay{
   position:fixed; inset:0; background:rgba(6,7,10,0.75); backdrop-filter:blur(6px);
   display:none; align-items:flex-end; justify-content:center; z-index:50;
@@ -187,7 +200,7 @@ select#exercise{
 
   <header>
     <div>
-      <h1 class="disp">Session Log</h1>
+      <h1 class="disp">Gym Log</h1>
       <div class="date" id="dateLabel"></div>
     </div>
     <button id="unitToggle">LB</button>
@@ -272,6 +285,8 @@ select#exercise{
       <div class="label" style="margin-bottom:10px;">Manage Exercises</div>
       <div id="manageList"></div>
     </div>
+
+    <button id="exportBtn">Download Data</button>
 
   </main>
 </div>
@@ -741,6 +756,70 @@ select#exercise{
     await safeSet('gymtracker:log:'+todayKey(), JSON.stringify(todaySets));
     await updateLastHint();
     await renderProgress(ex, type);
+  };
+
+  document.getElementById('exportBtn').onclick = async ()=>{
+    const lines = [];
+    lines.push('# Gym Log Export');
+    lines.push('');
+    lines.push('_Exported ' + new Date().toLocaleString() + '_');
+    lines.push('');
+    lines.push('## Exercises');
+    lines.push('');
+    lines.push('| Order | Name | Type |');
+    lines.push('|---|---|---|');
+    exercises.forEach((ex, i)=>{
+      lines.push('| '+(i+1)+' | '+ex.name+' | '+ex.type+' |');
+    });
+    lines.push('');
+
+    lines.push('## History by Exercise');
+    for(const ex of exercises){
+      const hist = await getHistory(ex.name);
+      lines.push('');
+      lines.push('### '+ex.name+' ('+ex.type+')');
+      lines.push('');
+      if(hist.length === 0){
+        lines.push('_No history yet._');
+        continue;
+      }
+      if(ex.type === 'cardio'){
+        lines.push('| Date | Time (min) |');
+        lines.push('|---|---|');
+        hist.forEach(h=> lines.push('| '+h.date+' | '+h.value+' |'));
+      } else {
+        lines.push('| Date | Weight ('+unit+') |');
+        lines.push('|---|---|');
+        hist.forEach(h=> lines.push('| '+h.date+' | '+h.value+' |'));
+      }
+    }
+    lines.push('');
+
+    lines.push('## Today ('+todayKey()+')');
+    lines.push('');
+    if(todaySets.length === 0){
+      lines.push('_No sets logged today._');
+    } else {
+      lines.push('| # | Exercise | Detail |');
+      lines.push('|---|---|---|');
+      todaySets.forEach((s, i)=>{
+        const detail = s.type === 'cardio'
+          ? (s.speed+' spd × '+s.minutes+' min')
+          : (s.weight+' '+s.unit+' × '+s.reps);
+        lines.push('| '+(i+1)+' | '+s.exercise+' | '+detail+' |');
+      });
+    }
+
+    const md = lines.join('\n');
+    const blob = new Blob([md], {type:'text/markdown'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gym-log-export-'+todayKey()+'.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
   };
 
   (async function init(){
