@@ -722,6 +722,8 @@ select#exercise{
       await persistExercisesAndRefresh();
     }
   });
+
+  async function onExerciseChange(){
     refreshModeUI();
     await applyDefaults();
     await updateLastHint();
